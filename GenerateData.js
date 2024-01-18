@@ -35,7 +35,7 @@ function generateData(peak, dense, empty) {
     })
   }
 
-  let arr = generateOriginData(peak)
+  let arr = generateOriginData(peak, dense, empty)
   let array = Array.from(arr)
     // .filter((item, index) => ((arr.indexOf(item) === index) && item >= mean && item <= 8760 + mean))
     .filter((item, index) => ((arr.indexOf(item) === index) && item >= 0 && item < 8760))
@@ -95,24 +95,71 @@ function generateData(peak, dense, empty) {
   })
 }
 
-function generateOriginData(peak) {
+function generateOriginData(peak, dense, empty) {
   let arr = []
-  let cnt = new Map()
-  let times = 1500
+  const numsOfData = 1500//整个数据集点的数量
+  const numsOfDense = 30 //密集区域点的数量
+  const halfLengthOfDE = 50//密集/空区域的长度 DE=Dense + Empty
+  let meanOfDE = []//每个DE区域的中点 范围在 ((0+1000)~(8760/2-20)) 和 ((8760/2+20)~(8760-1000))
+  let typeOfDE = []//每个DE区域的类型 Dense = 0， Empty = 1
+  let set = new Set()//用于记录区域的点来去重
 
-  if (peak == 0) {
-    for (let k = 0; k < times; k++) {
-      arr.push(Math.random() * 8760 | 0)
-    }
+  //处理不同dense和empty的情况
+  //初始化 meanOfDE 和 typeOfDE
+  for (let i = 0; i < dense; i++) {
+    typeOfDE.push(0);
+  }
+  for (let i = 0; i < empty; i++) {
+    typeOfDE.push(1);
+  }
+
+  //以随机顺序插入两种区域的中心
+  let mean1 = getRandom(1000, 8760 / 2 - 100)
+  let mean2 = getRandom(8760 / 2 + 100, 8760 - 1000)
+  if (Math.random() < 0.5) {
+    meanOfDE.push(mean1)
+    meanOfDE.push(mean2)
   } else {
+    meanOfDE.push(mean2)
+    meanOfDE.push(mean1)
+  }
+
+  for (let i = 0; i < typeOfDE.length; i++) {
+    if (typeOfDE[i] == 0) {//密集区域就插入点
+      let denseSet = new Set()
+      for (let j = 0; j < numsOfDense; j++) {
+        let val = getRandom(meanOfDE[i] - halfLengthOfDE, meanOfDE[i] + halfLengthOfDE)
+        while (denseSet.has(val)) {
+          val = getRandom(meanOfDE[i] - halfLengthOfDE, meanOfDE[i] + halfLengthOfDE)
+        }
+        arr.push(val)
+        denseSet.add(val)
+      }
+    }
+    //将整个区域的点加入集合
+    for (let j = meanOfDE[i] - halfLengthOfDE; j < meanOfDE[i] + halfLengthOfDE; j++) {
+      set.add(j);
+    } console.log(meanOfDE[i]);
+  }
+
+  //处理不同峰的情况
+  if (peak == 0) {//无峰
+    for (let k = 0; k < numsOfData; k++) {
+      let val = getRandom(0, 8760)
+      while (set.has(val)) {
+        val = getRandom(0, 8760)
+      }
+      arr.push(val)
+    }
+  } else {//单峰和双峰
     let mean = []
     let std_dev
 
-    if (peak == 1) {
+    if (peak == 1) {//单峰
       mean = [getRandom(1500, (8760 - 1500))]
       std_dev = 2000
       console.log(mean[0]);
-    } else if (peak == 2) {
+    } else if (peak == 2) {//双峰
       // 8760 / 2 = 4380
       // 4380 / 2 = 2190
       // 4380+2190 = 6570
@@ -121,7 +168,7 @@ function generateOriginData(peak) {
       std_dev = 1000
       console.log(mean[0] + " " + mean[1])
     }
-    // else if (peak == 3) {
+    // else if (peak == 3) {//三峰
     //   // 8760 / 3 = 2920
     //   // 2920 / 2 = 1460 
     //   // 1460 + 2920 = 4380
@@ -132,33 +179,14 @@ function generateOriginData(peak) {
     //   console.log(mean[0] + " " + mean[1] + " " + mean[2])
     // }
 
-    let randomMean = mean[getRandom(0, mean.length)]
-    let denseMean = getRandom(randomMean - 1000, randomMean + 1000)
-    console.log(denseMean);
-
-    //连续区域
-    for (let i = 0; i < 20; i++) {
-      let val = getNumberInNormalDistribution(denseMean, 10) | 0
-      // let val = denseMean + i - 10
-      let valWeek = getWeek(val)
-      cnt.set(valWeek, 1 + (cnt.has(valWeek) ? cnt.get(valWeek) : 0))
-      arr.push(val)
-      if (peak === 1)
-        console.log(val + "," + valWeek);
-    }
-    //整体分布
+    //随机生成正态分布随机数
     for (let k = 0; k < mean.length; k++) {
-      for (let i = 0; i < times / mean.length; i++) {
+      for (let i = 0; i < numsOfData / mean.length; i++) {
         let val = getNumberInNormalDistribution(mean[k], std_dev) | 0
-        let valWeek = getWeek(val)
-        if (cnt.has(valWeek)) {
-          cnt.set(valWeek, cnt.get(valWeek) - 1)
-          if (cnt.get(valWeek) === 0) {
-            cnt.delete(valWeek)
-          }
-        } else {
-          arr.push(val)
+        while (set.has(val)) {
+          val = getNumberInNormalDistribution(mean[k], std_dev) | 0
         }
+        arr.push(val)
       }
     }
   }
