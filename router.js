@@ -37,7 +37,7 @@ router.get('/data/generate', (req, res) => {
 })
 
 router.get('/sample/get', (req, res) => {
-  const filePath = path.join(__dirname, `/sample_data/${req.name}_data.json`)
+  const filePath = path.join(__dirname, `/sample_data/${req.query.name}_data.json`)
   fs.readFile(filePath, "utf-8", (err, dataStr) => {
     if (err) {
       return console.log("读取文件失败" + err.message);
