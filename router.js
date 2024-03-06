@@ -36,4 +36,17 @@ router.get('/data/generate', (req, res) => {
   res.send("成功生成数据")
 })
 
+router.get('/sample/get', (req, res) => {
+  const filePath = path.join(__dirname, `/sample_data/${req.name}_data.json`)
+  fs.readFile(filePath, "utf-8", (err, dataStr) => {
+    if (err) {
+      return console.log("读取文件失败" + err.message);
+    }
+    res.send({
+      "data": JSON.parse(dataStr)
+    })
+  })
+})
+
+
 module.exports = router
